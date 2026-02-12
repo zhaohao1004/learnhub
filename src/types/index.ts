@@ -46,6 +46,67 @@ export interface TestCase {
   expectedOutput: string
 }
 
+// 课程模块类型
+export interface Course {
+  id: string
+  title: string
+  description: string
+  thumbnail?: string
+  author?: string
+  lessons: Lesson[]
+  chapters?: Chapter[]
+  createdAt: string
+  updatedAt: string
+}
+
+// 章节
+export interface Chapter {
+  id: string
+  title: string
+  order: number
+  lessonIds: string[]
+}
+
+// 章节/课时
+export interface Lesson {
+  id: string
+  courseId: string
+  title: string
+  description?: string
+  order: number
+  video?: Video
+  document?: LessonDocument
+  codeTemplate?: CodeTemplate
+  duration: number
+  prevLessonId?: string
+  nextLessonId?: string
+}
+
+// 课时文档
+export interface LessonDocument {
+  id: string
+  title: string
+  content: string
+}
+
+// 代码模板
+export interface CodeTemplate {
+  id: string
+  language: SupportedLanguage
+  initialCode: string
+  expectedOutput?: string
+}
+
+// 学习进度
+export interface LearningProgress {
+  courseId: string
+  lessonId: string
+  videoProgress?: VideoProgress
+  codeSnapshot?: string
+  completed: boolean
+  lastAccessedAt: string
+}
+
 // 通用类型
 export interface ApiResponse<T> {
   success: boolean
