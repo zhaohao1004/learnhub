@@ -1,4 +1,5 @@
 import type { ExecutionResult } from '@/types'
+import { loadPyodideOnce } from '@/lib/pyodide-loader'
 
 // 执行超时时间（毫秒）
 const EXECUTION_TIMEOUT = 5000
@@ -156,6 +157,97 @@ export async function executeTypeScript(code: string): Promise<ExecutionResult> 
 }
 
 /**
+ * 在 Pyodide 中执行 Python 代码
+ */
+export async function executePython(code: string): Promise<ExecutionResult> {
+  const startTime = performance.now()
+
+  try {
+    // 加载 Pyodide 实例
+    const pyodide = await loadPyodideOnce()
+
+    // 设置超时处理
+    const timeoutPromise = new Promise<ExecutionResult>((_, reject) => {
+      setTimeout(() => {
+        reject(new Error('执行超时（超过 5 秒）'))
+      }, EXECUTION_TIMEOUT)
+    })
+
+    // 执行 Python 代码
+    const executionPromise = async (): Promise<ExecutionResult> => {
+      // 使用 StringIO 捕获 stdout 输出
+      await pyodide.runPythonAsync(`
+import sys
+from io import StringIO
+_sys_stdout_capture = sys.stdout
+sys.stdout = StringIO()
+`)
+
+      let result: unknown = undefined
+      let hasError = false
+      let errorMessage = ''
+
+      try {
+        // 执行用户代码
+        result = await pyodide.runPythonAsync(code)
+      } catch (err) {
+        hasError = true
+        errorMessage = err instanceof Error ? err.message : String(err)
+      }
+
+      // 获取捕获的输出
+      const output = await pyodide.runPythonAsync(`
+_captured = sys.stdout.getvalue()
+sys.stdout = _sys_stdout_capture
+_captured
+`)
+
+      const executionTime = performance.now() - startTime
+
+      if (hasError) {
+        return {
+          output: output as string,
+          error: errorMessage,
+          executionTime,
+        }
+      }
+
+      // 如果有返回值且输出为空，显示返回值
+      let finalOutput = output as string
+      if (result !== undefined && result !== null && !finalOutput.trim()) {
+        finalOutput = String(result)
+      }
+
+      return {
+        output: finalOutput,
+        executionTime,
+      }
+    }
+
+    // 使用 Promise.race 处理超时
+    return await Promise.race([executionPromise(), timeoutPromise])
+  } catch (error) {
+    const executionTime = performance.now() - startTime
+    const errorMessage = error instanceof Error ? error.message : String(error)
+
+    // 检查是否是 Pyodide 加载错误
+    if (errorMessage.includes('Failed to fetch') || errorMessage.includes('loadPyodide')) {
+      return {
+        output: '',
+        error: 'Python 环境加载失败，请检查网络连接后重试。',
+        executionTime,
+      }
+    }
+
+    return {
+      output: '',
+      error: errorMessage,
+      executionTime,
+    }
+  }
+}
+
+/**
  * 执行代码的统一入口
  */
 export async function executeCode(
@@ -168,11 +260,7 @@ export async function executeCode(
     case 'typescript':
       return executeTypeScript(code)
     case 'python':
-      // Python 支持将在后续实现
-      return {
-        output: '',
-        error: 'Python 执行尚未实现。请使用 JavaScript 或 TypeScript。',
-      }
+      return executePython(code)
     default:
       return {
         output: '',

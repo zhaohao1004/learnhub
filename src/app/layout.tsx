@@ -1,5 +1,8 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import { ThemeProvider } from '@/components/ui/ThemeProvider'
+import { AuthProvider } from '@/hooks/useAuth'
+import { Header } from '@/components/layout/Header'
 
 export const metadata: Metadata = {
   title: 'LearnHub - 在线学习平台',
@@ -12,9 +15,14 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="zh-CN">
+    <html lang="zh-CN" suppressHydrationWarning>
       <body className="antialiased">
-        {children}
+        <ThemeProvider>
+          <AuthProvider>
+            <Header />
+            {children}
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   )

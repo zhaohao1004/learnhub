@@ -1,6 +1,8 @@
 'use client'
 
 import { ArrowLeft } from 'lucide-react'
+import { ThemeToggle } from '@/components/ui/ThemeToggle'
+import UserMenu from '@/components/auth/UserMenu'
 
 interface LessonHeaderProps {
   courseName: string
@@ -41,7 +43,7 @@ export default function LessonHeader({
           </div>
         </div>
 
-        {/* 右侧：进度显示 */}
+        {/* 右侧：进度显示、主题切换和用户菜单 */}
         <div className="flex items-center gap-4">
           <div className="text-sm text-gray-500 dark:text-gray-400">
             {lessonIndex} / {totalLessons} 课时
@@ -57,6 +59,8 @@ export default function LessonHeader({
               {progress}%
             </span>
           </div>
+          <ThemeToggle />
+          <UserMenu />
         </div>
       </div>
     </header>
