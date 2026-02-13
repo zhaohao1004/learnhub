@@ -6,7 +6,11 @@ import { useParams, notFound } from 'next/navigation'
 import { CodeEditor, Console, executeCode } from '@/components/code-editor'
 import { VideoPlayer } from '@/components/video'
 import { MarkdownRenderer } from '@/components/document'
-import type { SupportedLanguage, ExecutionResult, VideoProgress } from '@/types'
+import { TestPanel } from '@/components/code-editor/TestPanel'
+import SaveLoadPanel from '@/components/code-editor/SaveLoadPanel'
+import { usePyodide } from '@/hooks/usePyodide'
+import { useCodeStorage } from '@/hooks/useCodeStorage'
+import type { SupportedLanguage, ExecutionResult, VideoProgress, TestCase, SavedCode } from '@/types'
 
 // TODO: 替换为 @/lib/data/courses 中的 getLesson() 和 getCourse()
 // import { getCourse, getLesson } from '@/lib/data/courses'
@@ -26,6 +30,7 @@ const mockLessons: Record<string, {
   codeTemplate?: {
     language: SupportedLanguage
     initialCode: string
+    testCases?: TestCase[]
   }
   prevLessonId?: string
   nextLessonId?: string
@@ -75,6 +80,14 @@ console.log('Hello, JavaScript!');
 // 尝试声明一些变量
 let name = '学习者';
 console.log('你好, ' + name + '!');`,
+      testCases: [
+        {
+          id: 'test-1',
+          name: '输出 Hello, JavaScript!',
+          input: '',
+          expectedOutput: 'Hello, JavaScript!\n你好, 学习者!'
+        }
+      ]
     },
     nextLessonId: 'lesson-2',
   },
@@ -295,8 +308,33 @@ export default function LessonPage() {
   const [isRunning, setIsRunning] = useState(false)
   const [videoProgress, setVideoProgress] = useState(0)
 
+  // Pyodide 状态（用于 Python 加载指示）
+  const { isLoading: pyodideLoading, progress: pyodideProgress } = usePyodide()
+
+  // 代码存储（自动保存）
+  const { autoSaveCode, save } = useCodeStorage({ autoSave: true, debounceMs: 2000 })
+
   useEffect(() => {
     setMounted(true)
+  }, [])
+
+  // 自动保存代码
+  useEffect(() => {
+    if (code && lessonId) {
+      autoSaveCode(
+        `autosave_${lessonKey}`,
+        code,
+        language,
+        lesson?.title || 'untitled',
+        lessonId
+      )
+    }
+  }, [code, language, lessonId, lessonKey, lesson?.title, autoSaveCode])
+
+  // 加载已保存的代码
+  const handleLoadSavedCode = useCallback((savedCode: SavedCode) => {
+    setCode(savedCode.content)
+    setLanguage(savedCode.language)
   }, [])
 
   // 运行代码
@@ -381,36 +419,55 @@ export default function LessonPage() {
           </div>
 
           {/* 运行按钮 */}
-          <button
-            onClick={handleRun}
-            disabled={isRunning}
-            className={`
-              px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-all text-sm
-              ${
-                isRunning
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed dark:bg-gray-700 dark:text-gray-400'
-                  : 'bg-green-600 hover:bg-green-500 text-white'
-              }
-            `}
-          >
-            {isRunning ? (
-              <>
-                <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
-                运行中
-              </>
-            ) : (
-              <>
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                运行代码
-              </>
-            )}
-          </button>
+          <div className="flex items-center gap-4">
+            {/* 保存/加载面板 */}
+            <SaveLoadPanel
+              currentCode={code}
+              currentLanguage={language}
+              currentFilename={lesson?.title}
+              lessonId={lessonId}
+              onLoad={handleLoadSavedCode}
+            />
+
+            <button
+              onClick={handleRun}
+              disabled={isRunning || (language === 'python' && pyodideLoading)}
+              className={`
+                px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-all text-sm
+                ${
+                  isRunning || (language === 'python' && pyodideLoading)
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed dark:bg-gray-700 dark:text-gray-400'
+                    : 'bg-green-600 hover:bg-green-500 text-white'
+                }
+              `}
+            >
+              {isRunning ? (
+                <>
+                  <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  运行中
+                </>
+              ) : language === 'python' && pyodideLoading ? (
+                <>
+                  <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  加载 Python... {pyodideProgress}%
+                </>
+              ) : (
+                <>
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  运行代码
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -461,9 +518,18 @@ export default function LessonPage() {
           </div>
 
           {/* 控制台 */}
-          <div className="h-64 flex-shrink-0 border-t border-gray-200 dark:border-gray-800">
+          <div className="h-48 flex-shrink-0 border-t border-gray-200 dark:border-gray-800">
             <Console output={output} onClear={handleClearOutput} />
           </div>
+
+          {/* 测试面板 */}
+          {lesson?.codeTemplate?.testCases && lesson.codeTemplate.testCases.length > 0 && (
+            <TestPanel
+              testCases={lesson.codeTemplate.testCases}
+              code={code}
+              language={language}
+            />
+          )}
         </div>
       </div>
 

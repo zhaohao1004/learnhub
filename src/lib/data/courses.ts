@@ -83,6 +83,14 @@ let name = '学习者';
 console.log('你好, ' + name + '!');`,
           expectedOutput: `Hello, JavaScript!
 你好, 学习者!`,
+          testCases: [
+            {
+              id: 'test-1-1',
+              name: '输出 Hello, JavaScript!',
+              input: '',
+              expectedOutput: 'Hello, JavaScript!\n你好, 学习者!',
+            },
+          ],
         },
       },
       {
@@ -137,6 +145,14 @@ node script.js
 console.log('环境配置完成！');
 `,
           expectedOutput: `环境配置完成！`,
+          testCases: [
+            {
+              id: 'test-2-1',
+              name: '输出环境配置完成',
+              input: '',
+              expectedOutput: '环境配置完成！',
+            },
+          ],
         },
       },
       {
@@ -204,6 +220,14 @@ let message = 'Hello';
 console.log(message);
 `,
           expectedOutput: `Hello`,
+          testCases: [
+            {
+              id: 'test-3-1',
+              name: '输出 Hello',
+              input: '',
+              expectedOutput: 'Hello',
+            },
+          ],
         },
       },
       {
@@ -279,6 +303,14 @@ console.log(greeting);
 console.log('Count:', count);`,
           expectedOutput: `Hello
 Count: 1`,
+          testCases: [
+            {
+              id: 'test-4-1',
+              name: '输出 greeting 和 count',
+              input: '',
+              expectedOutput: 'Hello\nCount: 1',
+            },
+          ],
         },
       },
       {
@@ -361,6 +393,14 @@ console.log('str 的类型:', typeof str);
 布尔值: true
 num 的类型: number
 str 的类型: string`,
+          testCases: [
+            {
+              id: 'test-5-1',
+              name: '输出数字和类型',
+              input: '',
+              expectedOutput: '数字: 42\n字符串: Hello\n布尔值: true\nnum 的类型: number\nstr 的类型: string',
+            },
+          ],
         },
       },
       {
@@ -439,6 +479,24 @@ a / b = 3.333...
 a % b = 1
 a > b: true
 a === b: false`,
+          testCases: [
+            {
+              id: 'test-6-1',
+              name: '算术运算 - 加法',
+              input: `let a = 10;
+let b = 3;
+console.log(a + b);`,
+              expectedOutput: '13',
+            },
+            {
+              id: 'test-6-2',
+              name: '比较运算 - 大于',
+              input: `let a = 10;
+let b = 3;
+console.log(a > b);`,
+              expectedOutput: 'true',
+            },
+          ],
         },
       },
     ],
